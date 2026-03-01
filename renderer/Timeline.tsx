@@ -2,6 +2,7 @@ import { categoryFor } from '../core/apps.ts';
 import { formatTime } from '../core/day.ts';
 import type { Block, FileEvent } from '../core/types.ts';
 import { blockText } from './labels.ts';
+import { blockTone, cn } from './ui.ts';
 
 const HOUR_PX = 128;
 
@@ -26,14 +27,18 @@ export function Timeline(props: {
   }
 
   return (
-    <div className="timeline-scroll" aria-label="Time blocks">
-      <div className="timeline-canvas" style={{ width }}>
+    <div className="overflow-x-auto rounded-[18px] border border-line bg-card shadow-card" aria-label="Time blocks">
+      <div className="relative h-44 min-w-full" style={{ width }}>
         {hours.map((hour) => (
-          <div key={hour} className="hour" style={{ left: left(hour) }}>
+          <div
+            key={hour}
+            className="pointer-events-none absolute inset-y-0 border-l border-line pt-2.5 pl-2 text-xs text-muted"
+            style={{ left: left(hour) }}
+          >
             {formatTime(hour)}
           </div>
         ))}
-        <div className="lane">
+        <div className="absolute inset-x-0 top-[38px] h-[78px]">
           {props.blocks.map((block) => {
             const text = blockText(block);
             const x = left(Math.max(block.start, props.range.start));
@@ -42,24 +47,31 @@ export function Timeline(props: {
               <button
                 key={block.id}
                 type="button"
-                className={`block ${categoryFor(block.app, block.kind)} ${props.selectedId === block.id ? 'selected' : ''}`}
+                className={cn(
+                  'absolute top-2 flex h-[62px] flex-col gap-0.5 overflow-hidden rounded-xl px-2.5 py-2 text-left',
+                  blockTone[categoryFor(block.app, block.kind)],
+                  props.selectedId === block.id && 'outline-2 outline-offset-2 outline-solid outline-ink',
+                  w < 88 && '[&_span]:hidden [&_small]:hidden',
+                )}
                 style={{ left: x, width: w }}
-                data-narrow={w < 88 ? 'true' : 'false'}
                 title={`${text.title} ${text.subtitle}`}
                 onClick={() => props.onSelectBlock(block.id)}
               >
-                <span>{text.title}</span>
-                {text.subtitle ? <small>{text.subtitle}</small> : null}
+                <span className="truncate">{text.title}</span>
+                {text.subtitle ? <small className="truncate text-[11px] opacity-85">{text.subtitle}</small> : null}
               </button>
             );
           })}
         </div>
-        <div className="lane saves">
+        <div className="absolute inset-x-0 top-[124px] h-8">
           {props.files.map((file) => (
             <button
               key={file.id}
               type="button"
-              className={`tick ${props.selectedId === file.id ? 'selected' : ''}`}
+              className={cn(
+                'absolute top-2 size-3 -ml-1.5 rounded-full border-2 border-card bg-indigo p-0',
+                props.selectedId === file.id && 'outline-2 outline-solid outline-ink',
+              )}
               style={{ left: left(file.ts) }}
               title={file.name}
               aria-label={file.name}
@@ -68,7 +80,7 @@ export function Timeline(props: {
           ))}
         </div>
         {props.showNow && props.now >= props.range.start && props.now <= props.range.end ? (
-          <div className="now" style={{ left: left(props.now) }} />
+          <div className="pointer-events-none absolute top-7 bottom-3.5 w-0.5 bg-copper" style={{ left: left(props.now) }} />
         ) : null}
       </div>
     </div>
