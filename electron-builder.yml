@@ -1,0 +1,18 @@
+appId: app.timebot.desktop
+productName: Timebot
+directories:
+  output: release
+files:
+  - dist/**
+  - dist-electron/**
+  - assets/**
+  - package.json
+mac:
+  category: public.app-category.productivity
+  icon: assets/icon.png
+  target:
+    - dmg
+win:
+  icon: assets/icon.png
+  target:
+    - nsis
