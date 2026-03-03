@@ -7,6 +7,9 @@ export function cn(...parts: Array<string | false | null | undefined>): string {
 export const btn =
   'cursor-pointer rounded-full border border-line bg-card px-3.5 py-2 disabled:cursor-default disabled:opacity-45';
 
+export const btnIcon =
+  'inline-flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-full border border-line bg-card p-0 disabled:cursor-default disabled:opacity-45';
+
 export const btnPrimary =
   'cursor-pointer rounded-full border border-transparent bg-copper px-3.5 py-2 text-[#fff8f2] disabled:cursor-default disabled:opacity-45';
 
@@ -14,7 +17,7 @@ export const btnText = 'cursor-pointer border-0 bg-transparent p-0 text-copper';
 
 export const btnDanger = 'cursor-pointer rounded-full border border-line bg-card px-3.5 py-2 text-del';
 
-export const card = 'rounded-[18px] border border-line bg-card px-[18px] pb-[18px] pt-4 shadow-card';
+export const card = 'rounded-[18px] border border-line bg-card px-[18px] shadow-card';
 
 export const heading = 'font-serif text-2xl font-medium';
 
