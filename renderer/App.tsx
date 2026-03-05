@@ -1,31 +1,23 @@
+import { CalendarCheck, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { formatDay, shiftDay, todayKey } from '../core/day.ts';
+import { formatPeriod, periodContainsToday, periodDays, shiftPeriod, todayKey, type Span } from '../core/day.ts';
 import type { Overview, TrackerStatus } from '../core/types.ts';
 import { client } from './api.ts';
 import { EventFilters, Events, type EventFilter } from './Events.tsx';
 import { liveBlocks } from './labels.ts';
-import { btnIcon } from './ui.ts';
+import { btnIcon, cn } from './ui.ts';
 
-function DayChevron(props: { direction: 'left' | 'right' }) {
-  const right = props.direction === 'right';
-  return (
-    <svg viewBox="0 0 24 24" className="size-[18px]" aria-hidden="true">
-      <path
-        d={right ? 'M9.5 6.5 14.5 12l-5 5.5' : 'M14.5 6.5 9.5 12l5 5.5'}
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
+const spans: Array<{ id: Span; label: string }> = [
+  { id: 'day', label: 'Day' },
+  { id: 'week', label: 'Week' },
+  { id: 'month', label: 'Month' },
+];
 
 export function App() {
-  const [day, setDay] = useState(() => todayKey());
+  const [span, setSpan] = useState<Span>('day');
+  const [anchor, setAnchor] = useState(() => todayKey());
   const [now, setNow] = useState(() => Date.now());
-  const [overview, setOverview] = useState<Overview | null>(null);
+  const [records, setRecords] = useState<Overview[] | null>(null);
   const [status, setStatus] = useState<TrackerStatus | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [filter, setFilter] = useState<EventFilter>('all');
@@ -38,28 +30,32 @@ export function App() {
 
   useEffect(() => {
     let cancel = false;
-    setOverview(null);
+    setRecords(null);
     setLoadError('');
-    void client()
-      .getOverview(day)
+    const days = periodDays(anchor, span);
+    void Promise.all(days.map((day) => client().getOverview(day)))
       .then((next) => {
-        if (!cancel) setOverview(next);
+        if (!cancel) setRecords(next);
       })
       .catch((error: unknown) => {
-        if (!cancel) setLoadError(error instanceof Error ? error.message : 'Could not load this day.');
+        if (!cancel) setLoadError(error instanceof Error ? error.message : 'Could not load this period.');
       });
     return () => {
       cancel = true;
     };
-  }, [day]);
+  }, [anchor, span]);
 
   useEffect(() => {
     let cancel = false;
     const refresh = async () => {
-      const requested = day;
-      const [nextOverview, nextStatus] = await Promise.all([client().getOverview(requested), client().getStatus()]);
-      if (cancel || requested !== day) return;
-      setOverview(nextOverview);
+      const requested = `${span}:${anchor}`;
+      const days = periodDays(anchor, span);
+      const [nextRecords, nextStatus] = await Promise.all([
+        Promise.all(days.map((day) => client().getOverview(day))),
+        client().getStatus(),
+      ]);
+      if (cancel || requested !== `${span}:${anchor}`) return;
+      setRecords(nextRecords);
       setStatus(nextStatus);
     };
     void client().getStatus().then((next) => {
@@ -72,56 +68,83 @@ export function App() {
       cancel = true;
       stop();
     };
-  }, [day]);
+  }, [anchor, span]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
-      if (event.key === 'ArrowLeft') setDay((current) => shiftDay(current, -1));
-      if (event.key === 'ArrowRight' && day < todayKey(now)) setDay((current) => shiftDay(current, 1));
+      if (event.key === 'ArrowLeft') setAnchor((current) => shiftPeriod(current, span, -1));
+      if (event.key === 'ArrowRight' && !periodContainsToday(anchor, span, now)) {
+        setAnchor((current) => shiftPeriod(current, span, 1));
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [day, now]);
+  }, [anchor, now, span]);
 
-  const blocks = overview ? liveBlocks(overview, now, Boolean(status?.paused)) : [];
-  const atToday = day >= todayKey(now);
+  const blocks = (records ?? []).flatMap((record) => liveBlocks(record, now, Boolean(status?.paused)));
+  const files = (records ?? []).flatMap((record) => record.files);
+  const atToday = periodContainsToday(anchor, span, now);
 
   return (
-    <div className="flex h-dvh w-full flex-col overflow-hidden pt-4">
+    <div className="flex h-dvh w-full flex-col overflow-hidden pt-12">
       <header className="mb-3 grid shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-3 px-[18px]">
-        <div />
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Date range">
+          {spans.map((item) => {
+            const active = span === item.id;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                aria-pressed={active}
+                className={cn(
+                  'cursor-pointer rounded-full border px-3 py-1 text-[13px]',
+                  active ? 'border-ink bg-ink text-paper' : 'border-ink/40 bg-transparent text-ink',
+                )}
+                onClick={() => setSpan(item.id)}
+              >
+                {item.label}
+              </button>
+            );
+          })}
+        </div>
         <div className="flex items-center gap-2 text-center">
           <button
             type="button"
             className={btnIcon}
-            aria-label="Previous day"
-            onClick={() => setDay((current) => shiftDay(current, -1))}
+            aria-label={`Previous ${span}`}
+            onClick={() => setAnchor((current) => shiftPeriod(current, span, -1))}
           >
-            <DayChevron direction="left" />
+            <ChevronLeft size={18} strokeWidth={1.75} aria-hidden="true" />
           </button>
-          <strong className="font-serif text-lg font-medium">{formatDay(day)}</strong>
+          <strong className="font-serif text-lg font-medium">{formatPeriod(anchor, span)}</strong>
           <button
             type="button"
             className={btnIcon}
-            aria-label="Next day"
+            aria-label={`Next ${span}`}
             disabled={atToday}
-            onClick={() => setDay((current) => shiftDay(current, 1))}
+            onClick={() => setAnchor((current) => shiftPeriod(current, span, 1))}
           >
-            <DayChevron direction="right" />
+            <ChevronRight size={18} strokeWidth={1.75} aria-hidden="true" />
           </button>
+          {atToday ? null : (
+            <button type="button" className={btnIcon} aria-label="Today" onClick={() => setAnchor(todayKey(now))}>
+              <CalendarCheck size={18} strokeWidth={1.75} aria-hidden="true" />
+            </button>
+          )}
         </div>
         <EventFilters value={filter} onChange={setFilter} />
       </header>
       <Events
         blocks={blocks}
-        files={overview?.files ?? []}
+        files={files}
+        showDate={span !== 'day'}
         filter={filter}
         onFilter={setFilter}
         selectedId={selectedId}
-        onSelect={setSelectedId}
-        empty={loadError || (!overview ? 'Loading this day…' : undefined)}
+        onSelect={(id) => setSelectedId((current) => (current === id ? null : id))}
+        empty={loadError || (!records ? 'Loading…' : undefined)}
       />
     </div>
   );

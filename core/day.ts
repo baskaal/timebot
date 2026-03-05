@@ -29,6 +29,60 @@ export function formatDay(day: string): string {
   });
 }
 
+export type Span = 'day' | 'week' | 'month';
+
+export function startOfWeek(day: string): string {
+  const date = new Date(dayBounds(day).start);
+  return shiftDay(day, -((date.getDay() + 6) % 7));
+}
+
+export function startOfMonth(day: string): string {
+  const [year, month] = day.split('-').map(Number);
+  return dayKey(new Date(year, (month || 1) - 1, 1).getTime());
+}
+
+export function periodDays(day: string, span: Span): string[] {
+  if (span === 'day') return [day];
+  if (span === 'week') {
+    const start = startOfWeek(day);
+    return Array.from({ length: 7 }, (_, index) => shiftDay(start, index));
+  }
+  const start = startOfMonth(day);
+  const [year, month] = start.split('-').map(Number);
+  const count = new Date(year, month || 1, 0).getDate();
+  return Array.from({ length: count }, (_, index) => shiftDay(start, index));
+}
+
+export function shiftPeriod(day: string, span: Span, delta: number): string {
+  if (span === 'day') return shiftDay(day, delta);
+  if (span === 'week') return shiftDay(day, delta * 7);
+  const [year, month, date] = day.split('-').map(Number);
+  const shifted = new Date(year, (month || 1) - 1 + delta, 1);
+  const last = new Date(shifted.getFullYear(), shifted.getMonth() + 1, 0).getDate();
+  shifted.setDate(Math.min(date || 1, last));
+  return dayKey(shifted.getTime());
+}
+
+export function isoWeek(day: string): number {
+  const start = new Date(dayBounds(day).start);
+  const thursday = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+  thursday.setDate(thursday.getDate() + 3 - ((thursday.getDay() + 6) % 7));
+  const firstThursday = new Date(thursday.getFullYear(), 0, 4);
+  firstThursday.setDate(firstThursday.getDate() + 3 - ((firstThursday.getDay() + 6) % 7));
+  return 1 + Math.round((thursday.getTime() - firstThursday.getTime()) / 604_800_000);
+}
+
+export function formatPeriod(day: string, span: Span): string {
+  if (span === 'day') return formatDay(day);
+  if (span === 'week') return `Week ${isoWeek(day)}`;
+  return new Date(dayBounds(startOfMonth(day)).start).toLocaleDateString([], { month: 'long' });
+}
+
+export function periodContainsToday(day: string, span: Span, now = Date.now()): boolean {
+  const today = todayKey(now);
+  return periodDays(day, span).includes(today);
+}
+
 export function formatTime(ts: number): string {
   return new Date(ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
