@@ -79,6 +79,10 @@ export class Engine {
     };
   }
 
+  eventDays(): string[] {
+    return this.store.eventDays();
+  }
+
   overview(day: string): Overview {
     return buildOverview({
       day,

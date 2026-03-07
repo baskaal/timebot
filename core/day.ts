@@ -78,9 +78,75 @@ export function formatPeriod(day: string, span: Span): string {
   return new Date(dayBounds(startOfMonth(day)).start).toLocaleDateString([], { month: 'long' });
 }
 
+export function periodHasEvents(day: string, span: Span, eventDays: ReadonlySet<string>, now = Date.now()): boolean {
+  const today = todayKey(now);
+  return periodDays(day, span).some((item) => item <= today && eventDays.has(item));
+}
+
+export function adjacentPeriod(
+  day: string,
+  span: Span,
+  delta: -1 | 1,
+  eventDays: ReadonlySet<string>,
+  now = Date.now(),
+): string | null {
+  const today = todayKey(now);
+  const available = [...eventDays].filter((item) => item <= today).sort();
+  const earliest = available[0];
+  const latest = available[available.length - 1];
+  if (!earliest || !latest) return null;
+  let cursor = day;
+  for (let step = 0; step < 500; step += 1) {
+    cursor = shiftPeriod(cursor, span, delta);
+    const bounds = periodDays(cursor, span);
+    const start = bounds[0] ?? cursor;
+    const end = bounds[bounds.length - 1] ?? cursor;
+    if (delta > 0 && (start > today || start > latest)) return null;
+    if (delta < 0 && end < earliest) return null;
+    if (periodHasEvents(cursor, span, eventDays, now)) return cursor;
+  }
+  return null;
+}
+
+export function anchorForSpan(day: string, span: Span, eventDays: ReadonlySet<string>, now = Date.now()): string {
+  if (periodHasEvents(day, span, eventDays, now)) return day;
+  const today = todayKey(now);
+  const available = [...eventDays].filter((item) => item <= today).sort();
+  if (available.length === 0) return day;
+  const target = day > today ? today : day;
+  const targetTime = dayBounds(target).start;
+  let best = available[0] ?? day;
+  let bestDistance = Math.abs(dayBounds(best).start - targetTime);
+  for (const item of available) {
+    const distance = Math.abs(dayBounds(item).start - targetTime);
+    if (distance < bestDistance || (distance === bestDistance && item > best)) {
+      best = item;
+      bestDistance = distance;
+    }
+  }
+  return best;
+}
+
 export function periodContainsToday(day: string, span: Span, now = Date.now()): boolean {
   const today = todayKey(now);
   return periodDays(day, span).includes(today);
+}
+
+export type CalendarCell = { day: string; inPeriod: boolean };
+
+export function calendarWeeks(day: string, span: Exclude<Span, 'day'>): CalendarCell[][] {
+  const period = periodDays(day, span);
+  const first = period[0] ?? day;
+  const last = period[period.length - 1] ?? day;
+  const gridStart = startOfWeek(first);
+  const gridEnd = shiftDay(startOfWeek(last), 6);
+  const cells: CalendarCell[] = [];
+  for (let cursor = gridStart; cursor <= gridEnd; cursor = shiftDay(cursor, 1)) {
+    cells.push({ day: cursor, inPeriod: cursor >= first && cursor <= last });
+  }
+  const weeks: CalendarCell[][] = [];
+  for (let index = 0; index < cells.length; index += 7) weeks.push(cells.slice(index, index + 7));
+  return weeks;
 }
 
 export function formatTime(ts: number): string {
