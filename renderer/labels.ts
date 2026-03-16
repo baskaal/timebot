@@ -15,8 +15,8 @@ export function blockText(block: Block): { title: string; subtitle: string } {
   return { title: block.app, subtitle };
 }
 
-export function liveBlocks(overview: Overview, now: number, paused: boolean): Block[] {
-  if (paused || overview.day !== todayKey(now) || overview.blocks.length === 0) return overview.blocks;
+export function liveBlocks(overview: Overview, now: number): Block[] {
+  if (overview.day !== todayKey(now) || overview.blocks.length === 0) return overview.blocks;
   const last = overview.blocks[overview.blocks.length - 1];
   if (now < last.end || now - last.end > 20_000) return overview.blocks;
   return overview.blocks.map((block, index) =>

@@ -9,7 +9,6 @@ contextBridge.exposeInMainWorld('timebot', {
   getSettings: () => ipcRenderer.invoke('settings:get'),
   saveSettings: (input: SettingsUpdate) => ipcRenderer.invoke('settings:set', input),
   pickFolder: () => ipcRenderer.invoke('folder:pick'),
-  setPaused: (paused: boolean) => ipcRenderer.invoke('tracking:set', paused),
   getStatus: () => ipcRenderer.invoke('status:get'),
   showDataFolder: () => ipcRenderer.invoke('data:show'),
   clearHistory: () => ipcRenderer.invoke('history:clear'),

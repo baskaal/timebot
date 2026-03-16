@@ -12,7 +12,6 @@ export type SettingsData = {
   watchFolders: string[];
   pollMs: number;
   openAtLogin: boolean;
-  paused: boolean;
 };
 
 function existing(folders: string[]): string[] {
@@ -58,7 +57,6 @@ export class SettingsStore {
       hasKey: this.data.openaiApiKey.length > 0,
       watchFolders: [...this.data.watchFolders],
       openAtLogin: this.data.openAtLogin,
-      paused: this.data.paused,
       dataPath: this.opts.dataPath,
       packaged: this.opts.packaged,
     };
@@ -93,7 +91,6 @@ export class SettingsStore {
       openaiModel: model,
       watchFolders: folders.folders,
       openAtLogin: update.openAtLogin,
-      paused: update.paused,
     };
     if (update.replaceKey) next.openaiApiKey = update.openaiApiKey?.trim() ?? '';
     this.data = next;
@@ -108,7 +105,6 @@ export class SettingsStore {
       watchFolders: defaultFolders(),
       pollMs: 5000,
       openAtLogin: false,
-      paused: false,
     };
     try {
       const parsed = JSON.parse(fs.readFileSync(this.file, 'utf8')) as Partial<SettingsData>;
@@ -124,7 +120,6 @@ export class SettingsStore {
         watchFolders: folders.length > 0 ? folders : fallback.watchFolders,
         pollMs: typeof parsed.pollMs === 'number' ? Math.min(60_000, Math.max(2000, parsed.pollMs)) : 5000,
         openAtLogin: Boolean(parsed.openAtLogin),
-        paused: Boolean(parsed.paused),
       };
     } catch {
       return fallback;

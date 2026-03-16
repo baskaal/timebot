@@ -1,7 +1,7 @@
 import { CalendarCheck, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { adjacentPeriod, anchorForSpan, formatPeriod, periodContainsToday, periodDays, periodHasEvents, todayKey, type Span } from '../core/day.ts';
-import type { Overview, TrackerStatus } from '../core/types.ts';
+import type { Overview } from '../core/types.ts';
 import { client } from './api.ts';
 import { Calendar } from './Calendar.tsx';
 import { EventFilters, Events, type EventFilter } from './Events.tsx';
@@ -20,7 +20,6 @@ export function App() {
   const [now, setNow] = useState(() => Date.now());
   const [records, setRecords] = useState<Overview[] | null>(null);
   const [eventDays, setEventDays] = useState<string[] | null>(null);
-  const [status, setStatus] = useState<TrackerStatus | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [filter, setFilter] = useState<EventFilter>('all');
   const [loadError, setLoadError] = useState('');
@@ -52,19 +51,14 @@ export function App() {
     const refresh = async () => {
       const requested = `${span}:${anchor}`;
       const days = periodDays(anchor, span);
-      const [nextRecords, nextStatus, daysWithEvents] = await Promise.all([
+      const [nextRecords, daysWithEvents] = await Promise.all([
         Promise.all(days.map((day) => client().getOverview(day))),
-        client().getStatus(),
         client().eventDays(),
       ]);
       if (cancel || requested !== `${span}:${anchor}`) return;
       setRecords(nextRecords);
-      setStatus(nextStatus);
       setEventDays(daysWithEvents);
     };
-    void client().getStatus().then((next) => {
-      if (!cancel) setStatus(next);
-    });
     void client().eventDays().then((days) => {
       if (!cancel) setEventDays(days);
     });
@@ -100,7 +94,7 @@ export function App() {
     return () => window.removeEventListener('keydown', onKey);
   }, [next, previous]);
 
-  const blocks = (records ?? []).flatMap((record) => liveBlocks(record, now, Boolean(status?.paused)));
+  const blocks = (records ?? []).flatMap((record) => liveBlocks(record, now));
   const files = (records ?? []).flatMap((record) => record.files);
 
   return (
@@ -181,7 +175,6 @@ export function App() {
           anchor={anchor}
           records={records}
           now={now}
-          paused={Boolean(status?.paused)}
           error={loadError}
           onOpenDay={(day) => {
             setAnchor(day);

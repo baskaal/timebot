@@ -220,7 +220,6 @@ export function createDemoApi(): TimebotApi {
     hasKey: false,
     watchFolders: ['/Users/me/dev', '/Users/me/Documents'],
     openAtLogin: false,
-    paused: false,
     dataPath: '/Users/me/Library/Application Support/timebot',
     packaged: false,
   };
@@ -230,15 +229,12 @@ export function createDemoApi(): TimebotApi {
   };
 
   const status = (): TrackerStatus => ({
-    paused: settings.paused,
     platform: 'darwin',
     permissionHint: null,
     lastError: null,
-    lastSample: settings.paused
-      ? null
-      : { app: 'Cursor', title: 'App.tsx — timebot', ts: Date.now() },
+    lastSample: { app: 'Cursor', title: 'App.tsx — timebot', ts: Date.now() },
     watchFolders: settings.watchFolders,
-    fileWatching: !settings.paused && settings.watchFolders.length > 0,
+    fileWatching: settings.watchFolders.length > 0,
   });
 
   const overviewFor = (day: string): Overview => {
@@ -281,17 +277,11 @@ export function createDemoApi(): TimebotApi {
         hasKey: input.replaceKey ? Boolean(input.openaiApiKey?.trim()) : settings.hasKey,
         watchFolders: input.watchFolders.map((folder) => folder.trim()).filter(Boolean),
         openAtLogin: input.openAtLogin,
-        paused: input.paused,
       };
       emit();
       return { ok: true, settings };
     },
     pickFolder: async () => '/Users/me/dev/notes',
-    setPaused: async (paused: boolean) => {
-      settings = { ...settings, paused };
-      emit();
-      return settings;
-    },
     getStatus: async () => status(),
     showDataFolder: async () => ({ path: settings.dataPath }),
     clearHistory: async () => {

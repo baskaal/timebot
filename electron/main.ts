@@ -47,6 +47,7 @@ function asset(name: string): string {
 }
 
 function showWindow(): void {
+  if (process.platform === 'darwin') void app.dock?.show();
   if (!windowRef) {
     createWindow();
     return;
@@ -54,6 +55,11 @@ function showWindow(): void {
   if (windowRef.isMinimized()) windowRef.restore();
   windowRef.show();
   windowRef.focus();
+}
+
+function requestQuit(): void {
+  quitting = true;
+  app.quit();
 }
 
 function createWindow(): void {
@@ -80,10 +86,10 @@ function createWindow(): void {
   windowRef = win;
   win.once('ready-to-show', () => win.show());
   win.on('close', (event) => {
-    if (!quitting) {
-      event.preventDefault();
-      win.hide();
-    }
+    if (quitting) return;
+    event.preventDefault();
+    win.hide();
+    if (process.platform === 'darwin') app.dock?.hide();
   });
   win.on('closed', () => {
     windowRef = null;
@@ -125,18 +131,9 @@ function trayImage() {
 function rebuildTray(status?: TrackerStatus): void {
   if (!tray || !engine) return;
   const current = status ?? engine.currentStatus();
-  const paused = current.paused;
-  tray.setToolTip(paused ? 'Timebot — paused' : current.lastSample ? `Timebot — ${current.lastSample.app}` : 'Timebot');
+  tray.setToolTip(current.lastSample ? `Timebot — ${current.lastSample.app}` : 'Timebot');
   tray.setContextMenu(
-    Menu.buildFromTemplate([
-      { label: 'Open Timebot', click: () => showWindow() },
-      {
-        label: paused ? 'Resume tracking' : 'Pause tracking',
-        click: () => tracker().setPaused(!paused),
-      },
-      { type: 'separator' },
-      { label: 'Quit Timebot', click: () => app.quit() },
-    ]),
+    Menu.buildFromTemplate([{ label: 'Quit Timebot', click: () => requestQuit() }]),
   );
 }
 
@@ -167,7 +164,6 @@ function asSettings(value: unknown): SettingsUpdate | null {
     replaceKey: Boolean(input.replaceKey),
     watchFolders: input.watchFolders,
     openAtLogin: Boolean(input.openAtLogin),
-    paused: Boolean(input.paused),
   };
 }
 
@@ -182,14 +178,7 @@ function installMenu(): void {
         { role: 'hide' },
         { role: 'hideOthers' },
         { role: 'unhide' },
-        { type: 'separator' },
-        { role: 'quit' },
       ],
-    });
-  } else {
-    template.push({
-      label: 'File',
-      submenu: [{ label: 'Quit', click: () => app.quit() }],
     });
   }
   template.push({ role: 'editMenu' });
@@ -233,10 +222,6 @@ function registerIpc(): void {
     if (result.canceled || result.filePaths.length === 0) return null;
     return result.filePaths[0];
   });
-  ipcMain.handle('tracking:set', (_event, paused: unknown) => {
-    tracker().setPaused(Boolean(paused));
-    return prefs().view();
-  });
   ipcMain.handle('status:get', () => tracker().currentStatus());
   ipcMain.handle('data:show', async () => {
     const folder = app.getPath('userData');
@@ -250,8 +235,11 @@ function registerIpc(): void {
 
 if (gotLock) {
   app.on('second-instance', () => showWindow());
-  app.on('before-quit', () => {
-    quitting = true;
+  app.on('before-quit', (event) => {
+    if (!quitting) {
+      event.preventDefault();
+      return;
+    }
     engine?.stop();
   });
   app.on('activate', () => showWindow());
