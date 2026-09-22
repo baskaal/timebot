@@ -199,6 +199,7 @@ function installMenu(): void {
 }
 
 function registerIpc(): void {
+  ipcMain.handle('history:days', () => tracker().eventDays());
   ipcMain.handle('overview:get', (_event, day: unknown) => {
     if (!isDay(day)) throw new Error('Invalid day');
     return tracker().overview(day);

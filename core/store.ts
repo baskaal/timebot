@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { dayBounds } from './day.ts';
+import { dayBounds, dayKey, shiftDay } from './day.ts';
 import type { Block, FileEvent, PageHit, SummaryRecord } from './types.ts';
 
 type Database = {
@@ -40,6 +40,21 @@ export class Store {
 
   summaryFor(day: string): SummaryRecord | null {
     return this.db.summaries.find((summary) => summary.day === day) ?? null;
+  }
+
+  eventDays(): string[] {
+    const days = new Set<string>();
+    for (const block of this.db.blocks) {
+      if (!(block.end > block.start)) continue;
+      let cursor = dayKey(block.start);
+      const last = dayKey(block.end - 1);
+      for (let guard = 0; cursor <= last && guard < 120; guard += 1) {
+        days.add(cursor);
+        cursor = shiftDay(cursor, 1);
+      }
+    }
+    for (const file of this.db.files) days.add(dayKey(file.ts));
+    return [...days].sort();
   }
 
   latestBlock(): Block | null {

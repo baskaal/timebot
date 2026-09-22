@@ -122,6 +122,7 @@ export type SummaryResult =
 
 export type TimebotApi = {
   platform: string;
+  eventDays(): Promise<string[]>;
   getOverview(day: string): Promise<Overview>;
   summarize(day: string): Promise<SummaryResult>;
   getSettings(): Promise<SettingsView>;

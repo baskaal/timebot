@@ -258,6 +258,7 @@ export function createDemoApi(): TimebotApi {
 
   return {
     platform: 'browser',
+    eventDays: async () => (cleared ? [] : [shiftDay(todayKey(), -1), todayKey()]),
     getOverview: async (day) => overviewFor(day),
     summarize: async (day) => {
       if (!settings.hasKey) return { ok: false, error: 'Add an OpenAI API key in Settings.' };
