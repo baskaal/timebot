@@ -17,8 +17,19 @@ const filters: Array<{ id: EventFilter; label: string }> = [
   { id: 'file', label: 'File save' },
 ];
 
-const rowButton =
-  'grid w-full grid-cols-[88px_72px_minmax(0,1fr)_auto] items-center gap-2 rounded-none border-0 bg-transparent px-0 py-3 text-left';
+function rowButton(showDate: boolean) {
+  const columns = showDate
+    ? 'grid-cols-[152px_72px_minmax(0,1fr)_auto]'
+    : 'grid-cols-[88px_72px_minmax(0,1fr)_auto]';
+  return `grid w-full ${columns} items-center gap-2 rounded-none border-0 bg-transparent px-0 py-3 text-left`;
+}
+
+function stampLabel(ts: number, showDate: boolean) {
+  const time = formatTime(ts);
+  if (!showDate) return time;
+  const date = new Date(ts).toLocaleDateString([], { month: 'short', day: 'numeric' });
+  return `${date}, ${time}`;
+}
 
 function typeName(type: 'app' | 'web' | 'file') {
   return filters.find((item) => item.id === type)?.label ?? type;
@@ -92,6 +103,7 @@ export function Events(props: {
   files: Array<FileEvent & { displayPath: string }>;
   filter: EventFilter;
   onFilter: (filter: EventFilter) => void;
+  showDate: boolean;
   selectedId: string | null;
   onSelect: (id: string) => void;
   empty?: string;
@@ -143,9 +155,19 @@ export function Events(props: {
                 className={cn('border-t border-line', selected && '-mx-[18px] bg-[rgb(196_98_45/0.08)] px-[18px]')}
               >
                 {event.type === 'file' ? (
-                  <FileRow file={event.file} selected={selected} onSelect={() => props.onSelect(event.id)} />
+                  <FileRow
+                    file={event.file}
+                    showDate={props.showDate}
+                    selected={selected}
+                    onSelect={() => props.onSelect(event.id)}
+                  />
                 ) : (
-                  <VisitRow block={event.block} selected={selected} onSelect={() => props.onSelect(event.id)} />
+                  <VisitRow
+                    block={event.block}
+                    showDate={props.showDate}
+                    selected={selected}
+                    onSelect={() => props.onSelect(event.id)}
+                  />
                 )}
               </article>
             );
@@ -157,12 +179,12 @@ export function Events(props: {
   );
 }
 
-function VisitRow(props: { block: Block; selected: boolean; onSelect: () => void }) {
+function VisitRow(props: { block: Block; showDate: boolean; selected: boolean; onSelect: () => void }) {
   const text = blockText(props.block);
   return (
     <>
-      <button type="button" className={rowButton} onClick={props.onSelect}>
-        <span className="text-muted tabular-nums">{formatTime(props.block.start)}</span>
+      <button type="button" className={rowButton(props.showDate)} aria-expanded={props.selected} onClick={props.onSelect}>
+        <span className="whitespace-nowrap text-muted tabular-nums">{stampLabel(props.block.start, props.showDate)}</span>
         <span className="text-muted tabular-nums">{formatDuration(props.block.end - props.block.start)}</span>
         <span className="flex min-w-0 flex-col gap-0.5">
           <strong className="truncate font-semibold">{text.title}</strong>
@@ -179,12 +201,17 @@ function VisitRow(props: { block: Block; selected: boolean; onSelect: () => void
   );
 }
 
-function FileRow(props: { file: FileEvent & { displayPath: string }; selected: boolean; onSelect: () => void }) {
+function FileRow(props: {
+  file: FileEvent & { displayPath: string };
+  showDate: boolean;
+  selected: boolean;
+  onSelect: () => void;
+}) {
   const file = props.file;
   return (
     <>
-      <button type="button" className={rowButton} onClick={props.onSelect}>
-        <span className="text-muted tabular-nums">{formatTime(file.ts)}</span>
+      <button type="button" className={rowButton(props.showDate)} aria-expanded={props.selected} onClick={props.onSelect}>
+        <span className="whitespace-nowrap text-muted tabular-nums">{stampLabel(file.ts, props.showDate)}</span>
         <span className="text-muted tabular-nums">
           {file.change === 'unlink' ? 'deleted' : `+${file.added} −${file.removed}`}
         </span>
