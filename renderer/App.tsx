@@ -9,6 +9,7 @@ import { Settings } from './Settings.tsx';
 import { Sites } from './Sites.tsx';
 import { SummaryCard } from './Summary.tsx';
 import { Timeline } from './Timeline.tsx';
+import { banner, btn, btnPrimary, btnText, cn } from './ui.ts';
 
 export function App() {
   const [day, setDay] = useState(() => todayKey());
@@ -85,6 +86,7 @@ export function App() {
 
   const blocks = overview ? liveBlocks(overview, now, Boolean(status?.paused)) : [];
   const atToday = day >= todayKey(now);
+  const mac = window.timebot?.platform === 'darwin';
 
   async function togglePause() {
     const next = await client().setPaused(!status?.paused);
@@ -106,13 +108,21 @@ export function App() {
   }
 
   return (
-    <div className="app">
-      <header className="topbar">
-        <div className="brand">
-          <span className="mark" aria-hidden="true" />
+    <div className="mx-auto w-[min(1180px,calc(100%-40px))] pb-12 pt-[22px] max-[980px]:w-[min(1180px,calc(100%-24px))]">
+      <header
+        className={cn(
+          'mb-[18px] grid grid-cols-[1fr_auto_1fr] items-center gap-[18px] max-[980px]:grid-cols-1',
+          mac && 'pl-[72px]',
+        )}
+      >
+        <div className="flex items-center gap-3">
+          <span
+            className="relative size-9 shrink-0 rounded-full bg-[radial-gradient(circle_at_50%_50%,transparent_0_3px,var(--color-copper)_4px_6px,transparent_7px),radial-gradient(circle_at_50%_50%,var(--color-card)_0_10px,var(--color-copper)_11px_14px,transparent_15px)] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)] before:absolute before:left-[17px] before:top-2 before:h-2.5 before:w-0.5 before:origin-bottom before:bg-copper before:content-[''] after:absolute after:left-[17px] after:top-[11px] after:h-[7px] after:w-0.5 after:origin-bottom after:rotate-[55deg] after:bg-copper after:content-['']"
+            aria-hidden="true"
+          />
           <div>
-            <h1>timebot</h1>
-            <p className="status" aria-live="polite">
+            <h1 className="font-serif text-[28px] font-medium italic tracking-[-0.03em]">timebot</h1>
+            <p className="mt-0.5 text-[13px] text-muted" aria-live="polite">
               {status?.paused
                 ? 'Paused'
                 : status?.lastSample
@@ -121,22 +131,28 @@ export function App() {
             </p>
           </div>
         </div>
-        <div className="daynav">
-          <button type="button" aria-label="Previous day" onClick={() => setDay((current) => shiftDay(current, -1))}>
+        <div className="flex items-center gap-2 text-center">
+          <button
+            type="button"
+            className={cn(btn, 'size-9 p-0 text-[22px]')}
+            aria-label="Previous day"
+            onClick={() => setDay((current) => shiftDay(current, -1))}
+          >
             ‹
           </button>
           <div>
-            <strong>{formatDay(day)}</strong>
+            <strong className="block font-serif text-lg font-medium">{formatDay(day)}</strong>
             {day !== todayKey(now) ? (
-              <button type="button" className="texty" onClick={() => setDay(todayKey(now))}>
+              <button type="button" className={cn(btnText, 'text-xs')} onClick={() => setDay(todayKey(now))}>
                 Today
               </button>
             ) : (
-              <span>Today</span>
+              <span className="text-xs text-muted">Today</span>
             )}
           </div>
           <button
             type="button"
+            className={cn(btn, 'size-9 p-0 text-[22px]')}
             aria-label="Next day"
             disabled={atToday}
             onClick={() => setDay((current) => shiftDay(current, 1))}
@@ -144,40 +160,49 @@ export function App() {
             ›
           </button>
         </div>
-        <div className="actions">
-          <button type="button" onClick={() => void togglePause()}>
+        <div className="flex items-center justify-end gap-3 max-[980px]:justify-start">
+          <button type="button" className={btn} onClick={() => void togglePause()}>
             {status?.paused ? 'Resume' : 'Pause'}
           </button>
-          <button type="button" className="primary" onClick={() => void summarize()} disabled={summaryBusy}>
+          <button type="button" className={btnPrimary} onClick={() => void summarize()} disabled={summaryBusy}>
             {summaryBusy ? 'Writing…' : 'Summarize'}
           </button>
-          <button type="button" onClick={() => setSettingsOpen(true)}>
+          <button type="button" className={btn} onClick={() => setSettingsOpen(true)}>
             Settings
           </button>
         </div>
       </header>
 
       {preview ? (
-        <p className="banner">Preview data for the layout. Launch the Electron app to track this computer.</p>
+        <p className={banner}>Preview data for the layout. Launch the Electron app to track this computer.</p>
       ) : null}
-      {status?.permissionHint ? <p className="banner warn">{status.permissionHint}</p> : null}
-      {status?.lastError && !status.permissionHint ? <p className="banner warn">{status.lastError}</p> : null}
-      {loadError ? <p className="banner warn">{loadError}</p> : null}
-      {notice ? <p className="banner">{notice}</p> : null}
+      {status?.permissionHint ? <p className={cn(banner, 'border-copper/45')}>{status.permissionHint}</p> : null}
+      {status?.lastError && !status.permissionHint ? (
+        <p className={cn(banner, 'border-copper/45')}>{status.lastError}</p>
+      ) : null}
+      {loadError ? <p className={cn(banner, 'border-copper/45')}>{loadError}</p> : null}
+      {notice ? <p className={banner}>{notice}</p> : null}
 
       {!overview ? (
-        <p className="loading">Loading this day…</p>
+        <p className={banner}>Loading this day…</p>
       ) : (
         <main>
-          <section className="stats">
+          <section className="mb-3.5 mt-2 flex gap-[18px] text-muted">
             <span>
-              <strong>{formatDuration(overview.totals.trackedMs)}</strong> tracked
+              <strong className="mr-1.5 font-serif text-[22px] font-medium text-ink">
+                {formatDuration(overview.totals.trackedMs)}
+              </strong>
+              tracked
             </span>
             <span>
-              <strong>{formatDuration(overview.totals.webMs)}</strong> on the web
+              <strong className="mr-1.5 font-serif text-[22px] font-medium text-ink">
+                {formatDuration(overview.totals.webMs)}
+              </strong>
+              on the web
             </span>
             <span>
-              <strong>{overview.totals.fileCount}</strong> file saves
+              <strong className="mr-1.5 font-serif text-[22px] font-medium text-ink">{overview.totals.fileCount}</strong>
+              file saves
             </span>
           </section>
           <Timeline
@@ -190,9 +215,9 @@ export function App() {
             onSelectBlock={setSelectedId}
             onSelectFile={setSelectedId}
           />
-          <div className="split">
+          <div className="mt-4 grid grid-cols-[1.3fr_0.9fr] gap-4 max-[980px]:grid-cols-1">
             <Activity blocks={blocks} selectedId={selectedId} onSelect={setSelectedId} />
-            <div className="stack">
+            <div className="flex flex-col gap-4">
               <SummaryCard
                 summary={overview.summary}
                 busy={summaryBusy}
@@ -203,7 +228,9 @@ export function App() {
             </div>
           </div>
           <Files files={overview.files} selectedId={selectedId} onSelect={setSelectedId} />
-          <p className="footnote">Closing the window keeps Timebot running. Quit from the Timebot menu.</p>
+          <p className="mt-4 text-[13px] text-muted">
+            Closing the window keeps Timebot running. Quit from the Timebot menu.
+          </p>
         </main>
       )}
 
