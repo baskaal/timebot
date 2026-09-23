@@ -12,11 +12,11 @@ function minutesLabel(ms: number): string {
   return formatDuration(ms);
 }
 
-function dayStats(record: Overview | undefined, now: number, paused: boolean) {
+function dayStats(record: Overview | undefined, now: number) {
   if (!record) return { saves: 0, appMs: 0, webMs: 0 };
   let appMs = 0;
   let webMs = 0;
-  for (const block of liveBlocks(record, now, paused)) {
+  for (const block of liveBlocks(record, now)) {
     const ms = Math.max(0, block.end - block.start);
     if (block.kind === 'web') webMs += ms;
     else appMs += ms;
@@ -29,7 +29,6 @@ export function Calendar(props: {
   anchor: string;
   records: Overview[] | null;
   now: number;
-  paused: boolean;
   error?: string;
   onOpenDay: (day: string) => void;
 }) {
@@ -60,7 +59,7 @@ export function Calendar(props: {
                 </div>
               );
             }
-            const stats = dayStats(byDay.get(cell.day), props.now, props.paused);
+            const stats = dayStats(byDay.get(cell.day), props.now);
             const rows = [
               stats.saves > 0 ? { label: 'File saves', value: String(stats.saves), tone: 'text-indigo' } : null,
               stats.appMs > 0 ? { label: 'Apps', value: minutesLabel(stats.appMs), tone: 'text-copper' } : null,

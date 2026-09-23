@@ -41,9 +41,8 @@ export class Engine {
       pollMs: settings.pollMs,
       gapMs: Math.max(settings.pollMs * 3, 15_000),
     });
-    if (!settings.paused) this.sessionizer.resume(store.latestBlock());
+    this.sessionizer.resume(store.latestBlock());
     this.status = {
-      paused: settings.paused,
       platform: process.platform,
       permissionHint: null,
       lastError: null,
@@ -55,7 +54,7 @@ export class Engine {
 
   start(): void {
     this.restartWatcher();
-    if (!this.settingsStore.get().paused) this.startTimers();
+    this.startTimers();
     this.emit();
   }
 
@@ -94,30 +93,12 @@ export class Engine {
     });
   }
 
-  setPaused(paused: boolean): void {
-    this.settingsStore.update({ paused });
-    this.status.paused = paused;
-    if (paused) {
-      const closed = this.sessionizer.flush();
-      if (closed) this.store.upsertBlock(closed);
-      this.stopTimers();
-      void this.watcher?.close();
-      this.watcher = null;
-      this.status.fileWatching = false;
-    } else {
-      this.startTimers();
-      this.restartWatcher();
-    }
-    this.emit();
-  }
-
   applySettings(): void {
     const settings = this.settingsStore.get();
     this.sessionizer.setTiming(settings.pollMs);
-    this.status.paused = settings.paused;
     this.status.watchFolders = settings.watchFolders;
     this.stopTimers();
-    if (!settings.paused) this.startTimers();
+    this.startTimers();
     this.restartWatcher();
     this.emit();
   }
@@ -158,10 +139,6 @@ export class Engine {
     this.watcher = null;
     const settings = this.settingsStore.get();
     this.status.watchFolders = settings.watchFolders;
-    if (settings.paused) {
-      this.status.fileWatching = false;
-      return;
-    }
     this.watcher = watchFolders({
       folders: settings.watchFolders,
       home: os.homedir(),
@@ -177,7 +154,7 @@ export class Engine {
   }
 
   private async poll(): Promise<void> {
-    if (this.stopped || this.polling || this.settingsStore.get().paused) return;
+    if (this.stopped || this.polling) return;
     this.polling = true;
     try {
       const raw = await readActiveWindow();
@@ -274,7 +251,7 @@ export class Engine {
   }
 
   private async pollTabs(): Promise<void> {
-    if (this.stopped || this.settingsStore.get().paused) return;
+    if (this.stopped) return;
     try {
       const tabs = await readOpenTabs();
       const ts = Date.now();

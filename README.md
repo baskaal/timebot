@@ -15,7 +15,7 @@ npm install
 npm run dev
 ```
 
-That starts the tracker and opens the window. Closing the window leaves Timebot running in the menu bar (Mac) or system tray (Windows). Quit from the Timebot menu.
+That starts the tracker and opens the window. Closing the window leaves Timebot running in the menu bar (Mac) or system tray (Windows). Quit from that icon.
 
 To build an installer for the computer you are on:
 

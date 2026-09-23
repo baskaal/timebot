@@ -78,7 +78,6 @@ export type Overview = {
 };
 
 export type TrackerStatus = {
-  paused: boolean;
   platform: string;
   permissionHint: string | null;
   lastError: string | null;
@@ -98,7 +97,6 @@ export type SettingsView = {
   hasKey: boolean;
   watchFolders: string[];
   openAtLogin: boolean;
-  paused: boolean;
   dataPath: string;
   packaged: boolean;
 };
@@ -109,7 +107,6 @@ export type SettingsUpdate = {
   replaceKey: boolean;
   watchFolders: string[];
   openAtLogin: boolean;
-  paused: boolean;
 };
 
 export type SaveResult =
@@ -128,7 +125,6 @@ export type TimebotApi = {
   getSettings(): Promise<SettingsView>;
   saveSettings(input: SettingsUpdate): Promise<SaveResult>;
   pickFolder(): Promise<string | null>;
-  setPaused(paused: boolean): Promise<SettingsView>;
   getStatus(): Promise<TrackerStatus>;
   showDataFolder(): Promise<{ path: string }>;
   clearHistory(): Promise<void>;
