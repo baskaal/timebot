@@ -8,7 +8,7 @@ import type { Store } from '../core/store.ts';
 import type { FileEvent, Overview, SummaryRecord, TrackerStatus } from '../core/types.ts';
 import { cleanUrl } from '../core/url.ts';
 import { watchFolders } from './files.ts';
-import { readActiveWindow, readOpenTabs, readWindowsBrowserUrl } from './platform.ts';
+import { AWAY_IDLE_MS, readActiveWindow, readIdleMs, readOpenTabs, readWindowsBrowserUrl } from './platform.ts';
 import { permissionHint } from '../core/parse.ts';
 import type { SettingsStore } from './settings.ts';
 import type { Snapshots } from './snapshots.ts';
@@ -157,7 +157,15 @@ export class Engine {
     if (this.stopped || this.polling) return;
     this.polling = true;
     try {
-      const raw = await readActiveWindow();
+      const [raw, idleMs] = await Promise.all([readActiveWindow(), readIdleMs()]);
+      const ts = Date.now();
+      if (idleMs != null && idleMs >= AWAY_IDLE_MS) {
+        const closed = this.sessionizer.stopAt(ts - idleMs);
+        if (closed) this.store.upsertBlock(closed);
+        this.status.lastSample = { app: 'Away', title: 'No keyboard or mouse', ts };
+        this.emit();
+        return;
+      }
       if (raw.error || !raw.app) {
         this.failures += 1;
         const hint = permissionHint(raw.error || '', process.platform);
@@ -197,7 +205,6 @@ export class Engine {
             'Timebot can see the frontmost app, but not window titles. Allow Electron while developing, or Timebot once it is installed, under System Settings → Privacy & Security → Accessibility.';
         }
       }
-      const ts = Date.now();
       if (isIdleApp(appName)) {
         const idle = this.sessionizer.push({ ts, app: appName, title: '' });
         if (idle.closed) this.store.upsertBlock(idle.closed);

@@ -74,6 +74,10 @@ export class Sessionizer {
     return { closed, current: this.current };
   }
 
+  stopAt(ts: number): Block | null {
+    return this.closeAt(ts);
+  }
+
   flush(): Block | null {
     const closed = this.current;
     this.current = null;

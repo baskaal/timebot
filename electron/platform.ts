@@ -195,6 +195,58 @@ export async function readOpenTabs(): Promise<Array<{ browser: string; url: stri
   return parseTabs(result.stdout);
 }
 
+const AWAY_IDLE_MS = 5 * 60_000;
+
+export { AWAY_IDLE_MS };
+
+const WINDOWS_IDLE = `
+if (-not ([System.Management.Automation.PSTypeName]'TimebotIdle').Type) {
+  Add-Type -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+public static class TimebotIdle {
+  [StructLayout(LayoutKind.Sequential)]
+  struct LASTINPUTINFO {
+    public uint cbSize;
+    public uint dwTime;
+  }
+  [DllImport("user32.dll")]
+  static extern bool GetLastInputInfo(ref LASTINPUTINFO plii);
+  public static long Milliseconds() {
+    LASTINPUTINFO info = new LASTINPUTINFO();
+    info.cbSize = (uint)Marshal.SizeOf(typeof(LASTINPUTINFO));
+    if (!GetLastInputInfo(ref info)) return -1;
+    return unchecked((uint)Environment.TickCount - info.dwTime);
+  }
+}
+"@
+}
+[TimebotIdle]::Milliseconds()
+`;
+
+export function parseHidIdleMs(output: string): number | null {
+  const match = output.match(/"HIDIdleTime"\s*=\s*(\d+)/);
+  if (!match?.[1]) return null;
+  const nanoseconds = Number(match[1]);
+  if (!Number.isFinite(nanoseconds)) return null;
+  return Math.round(nanoseconds / 1_000_000);
+}
+
+export async function readIdleMs(): Promise<number | null> {
+  if (process.platform === 'darwin') {
+    const result = await runCommand('ioreg', ['-c', 'IOHIDSystem', '-r', '-k', 'HIDIdleTime'], { timeoutMs: 3000 });
+    if (result.code !== 0) return null;
+    return parseHidIdleMs(result.stdout);
+  }
+  if (process.platform === 'win32') {
+    const result = await powershell(WINDOWS_IDLE, 4000);
+    if (result.code !== 0) return null;
+    const ms = Number(result.stdout.trim().split(/\r?\n/).pop());
+    return Number.isFinite(ms) && ms >= 0 ? ms : null;
+  }
+  return null;
+}
+
 export async function readWindowsBrowserUrl(): Promise<string | null> {
   if (process.platform !== 'win32') return null;
   const result = await powershell(WINDOWS_URL, 2000);

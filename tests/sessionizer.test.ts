@@ -68,6 +68,20 @@ test('starts a new block after a gap and closes on the lock screen', () => {
   assert.equal(idle.closed?.app, 'Cursor');
 });
 
+test('ends the open block at the last input after the user is away', () => {
+  const session = tracker();
+  const start = 1_000_000;
+  session.push({ ts: start, app: 'Cursor', title: 'a.ts' });
+  session.push({ ts: start + 5_000, app: 'Cursor', title: 'a.ts' });
+  const lastInput = start + 2_000;
+  const closed = session.stopAt(lastInput);
+  assert.equal(closed?.end, lastInput);
+  const back = session.push({ ts: start + 400_000, app: 'Cursor', title: 'a.ts' });
+  assert.equal(back.closed, null);
+  assert.notEqual(back.current?.id, closed?.id);
+  assert.equal(back.current?.start, start + 400_000);
+});
+
 test('upgrades a browser block once the url is known', () => {
   const session = tracker();
   const start = 1_000_000;
